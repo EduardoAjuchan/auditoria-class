@@ -68,3 +68,10 @@ CREATE TABLE vehicles (
   color       VARCHAR(40),
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Agregar columna de placa (única) y soft delete si no existen
+ALTER TABLE vehicles
+  ADD COLUMN plate VARCHAR(20) NOT NULL UNIQUE AFTER model,
+  ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1 AFTER created_at;
+
+CREATE INDEX ix_vehicles_active ON vehicles (is_active);
