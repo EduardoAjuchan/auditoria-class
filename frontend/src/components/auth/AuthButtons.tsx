@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import RegisterBasicModal from '@/components/auth/RegisterBasicModal';
 import RegisterHashModal from '@/components/auth/RegisterHashModal';
+import LoginModal from '@/components/auth/LoginModal';
 
 import { UserPlus, LogIn, Shield, KeyRound } from 'lucide-react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
+import { useRouter } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5050';
 
@@ -26,6 +28,8 @@ export default function AuthButtons({
 }: Props) {
   const [openBasic, setOpenBasic] = useState(false);
   const [openHash, setOpenHash] = useState(false);
+  const [openLogin, setOpenLogin] = useState(false);
+  const router = useRouter();
 
   return (
     <div className="max-w-md mx-auto">
@@ -46,14 +50,6 @@ export default function AuthButtons({
             Registrar (Básico)
           </button>
 
-          <button
-            className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white bg-blue-600/90 hover:bg-blue-700 transition"
-            onClick={onLoginBasic}
-          >
-            <LogIn className="w-4 h-4" />
-            Login (Básico)
-          </button>
-
           <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-1" />
 
           <button
@@ -64,14 +60,6 @@ export default function AuthButtons({
             Registrar (Hash)
           </button>
 
-          <button
-            className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-100 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition"
-            onClick={onLoginHash}
-          >
-            <KeyRound className="w-4 h-4" />
-            Login (Hash)
-          </button>
-
           {/* Separador “o” */}
           <div className="relative my-2">
             <div className="h-px bg-gradient-to-r from-transparent via-zinc-300 dark:via-zinc-700 to-transparent" />
@@ -79,6 +67,15 @@ export default function AuthButtons({
               o
             </span>
           </div>
+
+          {/* Login unificado */}
+          <button
+            className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition"
+            onClick={() => setOpenLogin(true)}
+          >
+            <LogIn className="w-4 h-4" />
+            Iniciar sesión
+          </button>
 
           {/* Botón Google estilo oficial funcional */}
           <div className="relative">
@@ -102,20 +99,29 @@ export default function AuthButtons({
                   try {
                     const idToken = cred.credential;
                     if (!idToken) throw new Error('No se recibió id_token de Google.');
+
                     const res = await fetch(`${API_BASE}/api/auth/login/google`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ idToken }),
                     });
+
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok || !data?.ok) {
                       console.error('Google login backend error:', data);
                       alert(data?.message || `Error: ${res.status}`);
                       return;
                     }
-                    try { localStorage.setItem('token', data.token); } catch {}
-                    alert('Login/registro con Google OK');
-                    if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:login'));
+
+                    try {
+                      if (data.token) {
+                        localStorage.setItem('token', data.token);
+                        const maxAge = 60 * 60; // 1h (ajusta si querés)
+                        document.cookie = `auth=${encodeURIComponent(data.token)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+                      }
+                    } catch {}
+
+                    router.push('/dashboard');
                   } catch (e: any) {
                     alert(e?.message || 'Error en login con Google');
                   }
@@ -134,6 +140,7 @@ export default function AuthButtons({
       </div>
       <RegisterBasicModal open={openBasic} onClose={() => setOpenBasic(false)} />
       <RegisterHashModal open={openHash} onClose={() => setOpenHash(false)} />
+      <LoginModal open={openLogin} onClose={() => setOpenLogin(false)} initialMode="basic" />
     </div>
   );
 }
