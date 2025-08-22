@@ -1,5 +1,9 @@
 'use client';
 
+import { useState } from 'react';
+import RegisterBasicModal from '@/components/auth/RegisterBasicModal';
+import RegisterHashModal from '@/components/auth/RegisterHashModal';
+
 import { UserPlus, LogIn, Shield, KeyRound } from 'lucide-react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 
@@ -20,6 +24,9 @@ export default function AuthButtons({
   onLoginHash,
   onGoogle,
 }: Props) {
+  const [openBasic, setOpenBasic] = useState(false);
+  const [openHash, setOpenHash] = useState(false);
+
   return (
     <div className="max-w-md mx-auto">
       <div className="rounded-2xl bg-white/90 dark:bg-zinc-900/70 shadow-xl ring-1 ring-black/5 backdrop-blur p-6 space-y-4">
@@ -33,7 +40,7 @@ export default function AuthButtons({
         <div className="grid gap-3">
           <button
             className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition"
-            onClick={onRegisterBasic}
+            onClick={() => setOpenBasic(true)}
           >
             <UserPlus className="w-4 h-4" />
             Registrar (Básico)
@@ -51,7 +58,7 @@ export default function AuthButtons({
 
           <button
             className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-100 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition"
-            onClick={onRegisterHash}
+            onClick={() => setOpenHash(true)}
           >
             <Shield className="w-4 h-4" />
             Registrar (Hash)
@@ -125,6 +132,8 @@ export default function AuthButtons({
           </div>
         </div>
       </div>
+      <RegisterBasicModal open={openBasic} onClose={() => setOpenBasic(false)} />
+      <RegisterHashModal open={openHash} onClose={() => setOpenHash(false)} />
     </div>
   );
 }
