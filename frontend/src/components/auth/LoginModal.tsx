@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Modal from '@/components/ui/Modal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5050';
@@ -16,6 +17,7 @@ export default function LoginModal({
   onClose: () => void;
   initialMode?: Mode;
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -53,22 +55,31 @@ export default function LoginModal({
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
-        throw new Error(data?.message || `HTTP ${res.status}`);
+        const apiMsg = (typeof data?.error === 'string' && data.error)
+          || (typeof data?.message === 'string' && data.message)
+          || (typeof data?.msg === 'string' && data.msg)
+          || `HTTP ${res.status}`;
+        throw new Error(apiMsg);
       }
 
-      try { if (data.token) localStorage.setItem('token', data.token); } catch {}
+      try {
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+          // set cookie for server-side/middleware checks
+          const maxAge = 60 * 60; // 1h default, ajustá si tu backend define otro
+          document.cookie = `auth=${encodeURIComponent(data.token)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+        }
+      } catch {}
       setMsg('Inicio de sesión correcto');
       setStatus('success');
 
-      // feedback corto y cerrar
-      setTimeout(() => {
-        onClose();
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('auth:login'));
-        }
-      }, 500);
+      // redirigir al dashboard
+      router.push('/dashboard');
     } catch (err: any) {
-      setMsg(err.message || 'Error al iniciar sesión');
+      const friendly = typeof err?.message === 'string' && err.message.trim().length > 0
+        ? err.message
+        : 'Error al iniciar sesión';
+      setMsg(friendly);
       setStatus('error');
     } finally {
       setLoading(false);

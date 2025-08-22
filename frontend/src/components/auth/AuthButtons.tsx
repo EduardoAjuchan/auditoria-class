@@ -7,6 +7,7 @@ import LoginModal from '@/components/auth/LoginModal';
 
 import { UserPlus, LogIn, Shield, KeyRound } from 'lucide-react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
+import { useRouter } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5050';
 
@@ -28,6 +29,7 @@ export default function AuthButtons({
   const [openBasic, setOpenBasic] = useState(false);
   const [openHash, setOpenHash] = useState(false);
   const [openLogin, setOpenLogin] = useState(false);
+  const router = useRouter();
 
   return (
     <div className="max-w-md mx-auto">
@@ -97,20 +99,29 @@ export default function AuthButtons({
                   try {
                     const idToken = cred.credential;
                     if (!idToken) throw new Error('No se recibió id_token de Google.');
+
                     const res = await fetch(`${API_BASE}/api/auth/login/google`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ idToken }),
                     });
+
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok || !data?.ok) {
                       console.error('Google login backend error:', data);
                       alert(data?.message || `Error: ${res.status}`);
                       return;
                     }
-                    try { localStorage.setItem('token', data.token); } catch {}
-                    alert('Login/registro con Google OK');
-                    if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:login'));
+
+                    try {
+                      if (data.token) {
+                        localStorage.setItem('token', data.token);
+                        const maxAge = 60 * 60; // 1h (ajusta si querés)
+                        document.cookie = `auth=${encodeURIComponent(data.token)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+                      }
+                    } catch {}
+
+                    router.push('/dashboard');
                   } catch (e: any) {
                     alert(e?.message || 'Error en login con Google');
                   }
