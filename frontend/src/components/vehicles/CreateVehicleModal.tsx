@@ -25,7 +25,7 @@ export type Form = {
   plate: string;
   yearMade: number | '';// number en envío, string para input
   price: number | '';
-  status: 'DISPONIBLE' | 'VENDIDO' | string;
+  status: 'DISPONIBLE' | 'VENDIDO' | 'MANTENIMIENTO' |string;
   mileageKm: number | '';
   color: string;
 };
@@ -41,7 +41,7 @@ const initialForm: Form = {
   color: '',
 };
 
-const STATUSES = ['DISPONIBLE', 'VENDIDO'] as const;
+const STATUSES = ['DISPONIBLE', 'VENDIDO', 'MANTENIMIENTO'] as const;
 
 export default function CreateVehicleModal({ open, onClose, onSuccess, mode = 'create', vehicleId, initial }: Props) {
   const isEdit = mode === 'edit';
