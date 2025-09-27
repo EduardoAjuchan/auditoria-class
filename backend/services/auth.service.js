@@ -9,11 +9,30 @@ const {
   getOAuthByProviderUserId, createOAuthAccount, insertLoginAudit
 } = require('../data/auth.data');
 
+const MFAService = require('./mfa.service');
+const RoleModel = require('../models/role.model');
+const { registerFailedAttempt, resetAttemptsOnSuccess } = require('../middleware/antibruteforce');
+
 const { JWT_SECRET, JWT_EXPIRES } = process.env;
 
 // ===== Helpers =====
-function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES || '1h' });
+async function signToken(payload) {
+  // Obtener información del usuario con rol
+  const userWithRole = await RoleModel.getUserWithRole(payload.uid);
+  
+  // JWT con expiración de 2 minutos y claims personalizados
+  const tokenPayload = {
+    user_id: payload.uid,
+    username: payload.username,
+    role: userWithRole?.role_name || 'VISITOR',
+    role_id: userWithRole?.role_id || 1,
+    iss: 'auditoria-system',
+    aud: 'auditoria-app',
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (2 * 60) // 2 minutos
+  };
+  
+  return jwt.sign(tokenPayload, JWT_SECRET);
 }
 function md5Hex(s) {
   return crypto.createHash('md5').update(s, 'utf8').digest('hex');
@@ -23,29 +42,50 @@ function sha256Hex(s) {
 }
 
 // ===== BASIC (texto plano) =====
-async function loginBasic(username, passwordPlain) {
+async function loginBasic(username, passwordPlain, totpCode = null, ipAddress = null) {
   const user = await getUserByUsername(username);
   if (!user) {
     await insertLoginAudit({ method: 'BASIC', success: false });
+    if (ipAddress) await registerFailedAttempt(ipAddress);
     return { ok: false, error: 'Usuario o contraseña inválidos' };
   }
+  
   const creds = await getCredentialsByUserId(user.user_id);
   const basic = creds.find(c => c.method === 'BASIC');
   if (!basic || basic.password !== passwordPlain) {
     await insertLoginAudit({ userId: user.user_id, method: 'BASIC', success: false });
+    if (ipAddress) await registerFailedAttempt(ipAddress);
     return { ok: false, error: 'Usuario o contraseña inválidos' };
   }
-  const token = signToken({ uid: user.user_id, username: user.username });
+
+  // Verificar MFA si está habilitado
+  const mfaEnabled = await MFAService.isMFAEnabled(user.user_id);
+  if (mfaEnabled) {
+    if (!totpCode) {
+      return { ok: false, error: 'Código TOTP requerido', requires_mfa: true };
+    }
+    
+    const mfaVerification = await MFAService.verifyTOTP(user.user_id, totpCode);
+    if (!mfaVerification.valid) {
+      await insertLoginAudit({ userId: user.user_id, method: 'BASIC', success: false });
+      if (ipAddress) await registerFailedAttempt(ipAddress);
+      return { ok: false, error: mfaVerification.error };
+    }
+  }
+
+  const token = await signToken({ uid: user.user_id, username: user.username });
   await insertLoginAudit({ userId: user.user_id, method: 'BASIC', success: true });
-  return { ok: true, token };
+  if (ipAddress) await resetAttemptsOnSuccess(ipAddress);
+  return { ok: true, token, mfa_enabled: mfaEnabled };
 }
 
 // ===== HASH (MD5, SHA-256, bcrypt) =====
 // NOTA: el esquema no guarda el algoritmo; probamos contra bcrypt, md5 y sha256.
-async function loginHash(username, passwordPlain) {
+async function loginHash(username, passwordPlain, totpCode = null, ipAddress = null) {
   const user = await getUserByUsername(username);
   if (!user) {
     await insertLoginAudit({ method: 'HASH', success: false });
+    if (ipAddress) await registerFailedAttempt(ipAddress);
     return { ok: false, error: 'Usuario o contraseña inválidos' };
   }
   const creds = await getCredentialsByUserId(user.user_id);
@@ -69,12 +109,29 @@ async function loginHash(username, passwordPlain) {
 
   if (!ok) {
     await insertLoginAudit({ userId: user.user_id, method: 'HASH', success: false });
+    if (ipAddress) await registerFailedAttempt(ipAddress);
     return { ok: false, error: 'Usuario o contraseña inválidos' };
   }
 
-  const token = signToken({ uid: user.user_id, username: user.username });
+  // Verificar MFA si está habilitado
+  const mfaEnabled = await MFAService.isMFAEnabled(user.user_id);
+  if (mfaEnabled) {
+    if (!totpCode) {
+      return { ok: false, error: 'Código TOTP requerido', requires_mfa: true };
+    }
+    
+    const mfaVerification = await MFAService.verifyTOTP(user.user_id, totpCode);
+    if (!mfaVerification.valid) {
+      await insertLoginAudit({ userId: user.user_id, method: 'HASH', success: false });
+      if (ipAddress) await registerFailedAttempt(ipAddress);
+      return { ok: false, error: mfaVerification.error };
+    }
+  }
+
+  const token = await signToken({ uid: user.user_id, username: user.username });
   await insertLoginAudit({ userId: user.user_id, method: 'HASH', success: true });
-  return { ok: true, token };
+  if (ipAddress) await resetAttemptsOnSuccess(ipAddress);
+  return { ok: true, token, mfa_enabled: mfaEnabled };
 }
 
 // ===== GOOGLE (ID Token) =====
@@ -110,7 +167,7 @@ async function loginGoogle(idToken) {
     }
   }
 
-  const token = signToken({ uid: user.user_id, username: user.username });
+  const token = await signToken({ uid: user.user_id, username: user.username });
   await insertLoginAudit({ userId: user.user_id, method: 'GOOGLE', success: true });
   return { ok: true, token };
 }
