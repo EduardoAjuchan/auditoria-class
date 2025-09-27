@@ -75,3 +75,52 @@ ALTER TABLE vehicles
   ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1 AFTER created_at;
 
 CREATE INDEX ix_vehicles_active ON vehicles (is_active);
+
+
+========== NEW ==========
+
+-- REQUERIDO: Para diferencias Visitante/Admin/Super-admin
+CREATE TABLE roles (
+  role_id INT AUTO_INCREMENT PRIMARY KEY,
+  role_name ENUM('VISITOR', 'ADMIN', 'SUPER_ADMIN') NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insertar roles por defecto
+INSERT INTO roles (role_name) VALUES ('VISITOR'), ('ADMIN'), ('SUPER_ADMIN');
+
+-- Agregar columna de rol a usuarios y foreign key
+ALTER TABLE users ADD COLUMN role_id INT DEFAULT 1;
+ALTER TABLE users ADD CONSTRAINT fk_user_role 
+  FOREIGN KEY (role_id) REFERENCES roles(role_id);
+
+-- REQUERIDO: Para el doble factor de autenticación
+CREATE TABLE mfa_secrets (
+  mfa_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  secret VARCHAR(64) NOT NULL,
+  is_enabled TINYINT(1) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_mfa_user FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- REQUERIDO: Para Exponential Backoff por IP
+CREATE TABLE ip_attempts (
+  attempt_id INT AUTO_INCREMENT PRIMARY KEY,
+  ip_address VARCHAR(45) NOT NULL,
+  attempts_count INT DEFAULT 1,
+  last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  blocked_until TIMESTAMP NULL,
+  UNIQUE KEY unique_ip (ip_address)
+);
+
+-- REQUERIDO: "Request por endpoint"
+CREATE TABLE request_logs (
+  log_id INT AUTO_INCREMENT PRIMARY KEY,
+  ip_address VARCHAR(45) NOT NULL,
+  method VARCHAR(10) NOT NULL,
+  endpoint VARCHAR(255) NOT NULL,
+  user_id INT NULL,
+  status_code INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
