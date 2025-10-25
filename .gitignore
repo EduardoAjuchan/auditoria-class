@@ -1,4 +1,2 @@
-node_modules
-.env
-.DS_Store
-backend/.DS_Store
+node_modules/
+dist/

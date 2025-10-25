@@ -1,419 +1,354 @@
-# 🛡️ Sistema de Autenticación Avanzado con Arquitectura Cliente-Servidor
+# Auditoría — Sistema de Autenticación (Cliente-Servidor)
 
-Este proyecto implementa un sistema de autenticación robusto con múltiples capas de seguridad mediante arquitectura cliente-servidor, aplicado a un sistema de gestión de inventario automotriz con funcionalidades avanzadas de monitoreo y protección contra ataques.
+Última actualización: 2025-10-24
 
----
+## Descripción
 
-## 🎯 Objetivo
-Desarrollar un sistema de autenticación robusto que implemente:
+Proyecto didáctico que implementa un sistema de autenticación con arquitectura cliente-servidor. Muestra varios métodos de autenticación (básico en texto plano, contraseñas hasheadas con bcrypt y login con Google) y cómo interactúan un frontend React (Vite + TypeScript) y un backend Node.js/Express con una base de datos relacional (MySQL).
 
-### **Funcionalidades Base:**
-- Autenticación básica (usuario/contraseña en texto plano, solo con fines académicos)
-- Autenticación con contraseñas cifradas (MD5, SHA-256, bcrypt)
-- Login con Google (OAuth 2.0)
-- Gestión de inventario de vehículos (CRUD con validación de placa y soft delete)
+El sistema incluye además un inventario automotriz (listado de vehículos) y mantiene un registro de los inicios de sesión realizados por cada usuario.
 
-### **Funcionalidades Avanzadas:**
-- **Sistema de Roles**: VISITOR, ADMIN, SUPER_ADMIN con permisos granulares
-- **Autenticación Multi-Factor (MFA)**: TOTP con Google Authenticator/Authy
-- **Protección Anti-Brute Force**: Exponential Backoff por IP
-- **Sistema de Auditoría**: Logging completo y dashboard de métricas
-- **JWT Avanzado**: Claims personalizados y expiración configurable
+## Objetivo
 
----
+Desarrollar y documentar una aplicación que permita:
 
-## 🏗️ Arquitectura
-- **Frontend:** Cliente que consume los servicios del backend.
-- **Backend:** Servidor en **Node.js**.
-- **Comunicación:** HTTP/HTTPS.
-- **Base de datos:** MySQL (en Docker o local).
-- **Modelo:** Arquitectura Cliente-Servidor en capas.
+- Probar diferentes estrategias de autenticación y comparar seguridad.
+- Registrar eventos de inicio de sesión (logs).
+- Mantener un inventario de vehículos (listado, creación básica).
 
----
+> Nota: Este proyecto es educativo. Algunas implementaciones (p. ej. autenticación básica en texto plano) están incluidas únicamente para estudio y deben evitarse en producción.
 
-## 📂 Estructura del Proyecto
+## Tecnologías
+
+- Frontend: React + Vite + TypeScript
+- Backend: Node.js + Express
+- Base de datos: MySQL (o MariaDB)
+- Autenticación/criptografía: bcrypt
+- Desarrollo: nodemon, vite
+
+## Estructura del proyecto
 
 ```
-/backend -> Código fuente del servidor en Node.js
-├── /config # Configuración general
-│ └── db.js                # Conexión a la base de datos MySQL mediante mysql2 (pool)
-│
-├── /data # Consultas SQL a la base de datos
-│ ├── auth.data.js         # Queries para usuarios, credenciales, OAuth y auditoría de login
-│ └── vehicles.data.js     # Queries para CRUD de vehículos (placa única y soft delete)
-│
-├── /middleware # Middlewares de Express
-│ ├── validate.js          # Validación de parámetros requeridos en requests
-│ ├── jwt.js               # Validación JWT con claims personalizados
-│ ├── roles.js             # Control de acceso basado en roles
-│ ├── antibruteforce.js    # Protección Anti-Brute Force con Exponential Backoff
-│ └── requestLogger.js     # Logging automático de todos los requests
-│
-├── /models # Modelos para transformar y tipar datos
-│ ├── credential.model.js  # Normalización de credenciales
-│ ├── oauth.model.js       # Normalización de datos de login con Google
-│ ├── user.model.js        # Normalización de usuarios
-│ ├── vehicle.model.js     # Normalización de vehículos
-│ ├── role.model.js        # Gestión de roles de usuario
-│ ├── mfa.model.js         # Gestión de secretos MFA/TOTP
-│ ├── ipAttempt.model.js   # Tracking de intentos por IP
-│ └── requestLog.model.js  # Logging de requests y estadísticas
-│
-├── /routes # Definición de rutas HTTP
-│ ├── auth.routes.js       # Rutas para login/register + MFA + auditoría
-│ ├── vehicles.routes.js   # Rutas CRUD para vehículos con control de roles
-│ └── users.routes.js      # Gestión de usuarios (solo super-admin)
-│
-└── /services # Lógica de negocio
-├── auth.service.js        # Autenticación: BASIC, HASH, Google, JWT con MFA
-├── vehicles.service.js    # CRUD de vehículos con validación de placa y soft delete
-├── mfa.service.js         # Servicio MFA: generación TOTP, QR codes, verificación
-└── audit.service.js       # Servicio de auditoría: estadísticas y métricas
-│
-├── main.js # Punto de entrada principal del servidor (puerto 5000)
-├── .env                   # Variables de entorno (MySQL, JWT, etc.)
-├── package.json           # Configuración de dependencias y scripts
-└── package-lock.json      # Versión bloqueada de dependencias
-
-/database -> Archivos de base de datos
-├── database.sql           # Script con la creación de tablas
-├── README.md              # Explicación de cada tabla y campo
-└── er.png                 # Diagrama entidad-relación
-
+Auditoria/
+├─ backend/
+│  ├─ /config/
+│  |  └─ db.js
+│  ├─ /controllers/
+│  │  ├─ auditoriaController.js
+│  │  ├─ authController.js
+│  │  ├─ mfaController.js
+│  │  └─ vehiculosController.js
+│  ├─ /middlewares/
+│  │  ├─ auditoriaMiddleware.js
+│  │  ├─ backoffMiddleware.js
+│  │  ├─ verificarRol.js
+│  │  └─ verificarToken.js
+│  ├─ /models/
+│  |  ├─ logModel.js
+│  |  ├─ usuarioModel.js
+│  |  └─ vehiculoModel.js
+│  ├─ /routes/
+│  │  ├─ auditoria.js
+│  │  ├─ auth.js
+│  │  ├─ mfa.js
+│  │  └─ vehiculos.js
+│  ├─ .env
+│  └─ server.js
+|
+├─ frontend/
+|  ├─ src/
+|  |  ├─ components/
+|  |  |  └─ Navbar.tsx
+|  |  ├─ pages/
+|  |  │  ├─ Auditoria.tsx
+|  |  │  ├─ Inventario.tsx
+|  |  │  ├─ LoginBasico.tsx
+|  |  │  ├─ LoginCifrado.tsx
+|  |  │  ├─ LoginGoogle.tsx
+|  |  │  └─ Registro.tsx
+|  |  ├─ main.tsx
+|  |  ├─ App.tsx
+|  |  ├─ styles.css
+|  └─ .env
+└─ readme.md
 ```
 
+## Base de datos — Esquema inicial (MySQL)
 
----
-
-## 🗄️ Base de Datos
-La carpeta [`/database`](./database) contiene todo lo relacionado a la definición y documentación de la base de datos:
-
-- **database.sql** → Script con la creación de todas las tablas incluyendo las nuevas funcionalidades
-- **README.md** → Explicación breve de cada campo de cada tabla y las relaciones principales  
-- **er.png** → Diagrama entidad-relación (ERD) para visualizar la estructura de forma gráfica
-
-### **Nuevas Tablas Implementadas:**
-- **roles** → Sistema de roles (VISITOR, ADMIN, SUPER_ADMIN)
-- **mfa_secrets** → Secretos TOTP para autenticación multi-factor
-- **ip_attempts** → Tracking de intentos por IP para Anti-Brute Force
-- **request_logs** → Logging completo de requests para auditoría
-
----
-
-## ⚙️ Backend
-
-El backend está desarrollado en **Node.js** con **Express**, estructurado en capas para mantener un código limpio y escalable:
-
-- **config/** → Conexión a MySQL.  
-- **middleware/** → Validación de parámetros.  
-- **routes/** → Endpoints de la API.  
-- **models/** → Transformación de datos de la DB.  
-- **services/** → Lógica de negocio (auth, inventario).  
-- **data/** → Queries SQL a la DB.  
-
----
-
-## 🔑 Endpoints de Autenticación
-
-### Registro de usuario (texto plano)
-`POST /api/auth/register/basic`
-```json
-{
-  "username": "juan",
-  "email": "juan@example.com",
-  "password": "123456"
-}
-```
-
-#### Login básico (texto plano)
-
-`POST /api/auth/login/basic`
-```json
-{
-  "username": "juan",
-  "password": "123456"
-}
-```
-
-#### Registro de usuario con hash
-`POST /api/auth/register/hash`
-```json
-{
-  "username": "maria",
-  "email": "maria@example.com",
-  "password": "secreto",
-  "algo": "bcrypt"
-}
-```
-
-#### Login con hash (bcrypt, MD5, SHA-256)
-
-`POST /api/auth/login/hash`
-```json
-{
-  "username": "maria",
-  "password": "secreto"
-}
-```
-
-#### Login con Google
-`POST /api/auth/login/google`
-```json
-{
-  "idToken": "TOKEN_DE_GOOGLE"
-}
-```
-
-#### 🔐 Respuesta de login exitosa
-
-```json
-{
-  "ok": true,
-  "token": "eyJhbGciOiJIUzI1NiIs..."
-}
-```
-
-### 🚗 Endpoints de Inventario de Vehículos
-
-#### Crear vehículo
-
-`POST /api/vehicles`
-
-```json
-{
-  "brand": "Toyota",
-  "model": "Corolla",
-  "plate": "P123ABC",
-  "yearMade": 2021,
-  "price": 120000,
-  "status": "DISPONIBLE",
-  "mileageKm": 15000,
-  "color": "Gris"
-}
-```
-
-#### Listar vehículos
-
-`GET /api/vehicles?brand=&status=&yearFrom=&yearTo=&includeInactive=0&page=1&pageSize=10`
-
-#### Buscar vehículo por ID
-
-`GET /api/vehicles/1`
-
-Por defecto solo activos.
-Si necesitas incluir inactivos:
-
-`GET /api/vehicles/1?includeInactive=1`
-
-#### Actualizar vehículo
-
-`PATCH /api/vehicles/1`
-
-```json
-{
-  "price": 115000,
-  "status": "VENDIDO",
-  "plate": "P123XYZ"
-}
-```
-
-#### Deshabilitar vehículo
-
-`POST /api/vehicles/1/disable`
-
-(soft delete → is_active = 0)
-
-#### Habilitar vehículo
-
-`POST /api/vehicles/1/enable`
-
-(reactiva el registro → is_active = 1)
-
-## ▶️ Ejecución
-
-1. Instalar dependencias:
-   ```bash
-   cd backend
-   npm install
-   ```
-2. Configurar .env con los datos de conexión MySQL:
-   ```bash
-   PORT=5000
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASS=123456
-   DB_NAME=auditoria
-   JWT_SECRET=super_secret_key
-   JWT_EXPIRES=1h
-   ```
-3. Ejecutar el servidor:
-   ```bash
-   npm start
-   ```
-
----
-
-## 🛡️ Funcionalidades Avanzadas de Seguridad
-
-### **👥 Sistema de Roles**
-
-El sistema implementa tres niveles de acceso:
-
-- **🔍 VISITOR**: Solo lectura del catálogo público de vehículos
-- **⚙️ ADMIN**: CRUD completo del inventario automotriz con soft delete
-- **🔐 SUPER_ADMIN**: Gestión completa de usuarios + dashboard de auditoría + todos los privilegios de admin
-
-### **🔐 Autenticación Multi-Factor (MFA)**
-
-Implementación TOTP (Time-based One-Time Password) compatible con:
-- Google Authenticator
-- Authy
-- Microsoft Authenticator
-
-#### Configurar MFA:
-1. **Setup**: `POST /api/auth/mfa/setup` - Genera QR code
-2. **Enable**: `POST /api/auth/mfa/enable` - Activa MFA con código TOTP
-3. **Login**: Incluir `totp_code` en requests de login
-
-```json
-{
-  "username": "usuario",
-  "password": "contraseña",
-  "totp_code": "123456"
-}
-```
-
-### **🚫 Protección Anti-Brute Force**
-
-Sistema de **Exponential Backoff** por IP con límites escalonados:
-
-- **3-4 intentos**: 30 segundos de bloqueo
-- **5-9 intentos**: 1 minuto de bloqueo  
-- **10-19 intentos**: 5 minutos de bloqueo
-- **20+ intentos**: 15 minutos de bloqueo
-
-### **📊 Sistema de Auditoría y Logging**
-
-Registro automático de:
-- ✅ Todos los requests por endpoint
-- 🔑 Logs detallados de autenticación (exitosos y fallidos)
-- 🌐 Tracking de IPs sospechosas
-- 📈 Métricas en tiempo real
-
-### **🔑 JWT Mejorado**
-
-- **Expiración**: 2 minutos (configurable para producción)
-- **Claims personalizados**: `user_id`, `username`, `role`, `role_id`, `iss`, `aud`
-- **Validación estricta** de emisor y audiencia
-
----
-
-## 🔗 Nuevos Endpoints
-
-### **🔐 MFA (Multi-Factor Authentication)**
-
-```bash
-POST /api/auth/mfa/setup      # Generar configuración MFA + QR code
-POST /api/auth/mfa/enable     # Habilitar MFA (requiere código TOTP)
-POST /api/auth/mfa/disable    # Deshabilitar MFA
-GET  /api/auth/mfa/status     # Estado MFA del usuario
-```
-
-### **📊 Dashboard de Auditoría (Solo Super-Admin)**
-
-```bash
-GET /api/auth/audit/stats               # Estadísticas generales del sistema
-GET /api/auth/audit/auth-logs           # Logs de autenticación recientes
-GET /api/auth/audit/suspicious-ips      # IPs con comportamiento sospechoso
-GET /api/auth/audit/user-activity       # Actividad detallada por usuario
-GET /api/auth/audit/endpoint-stats      # Estadísticas por endpoint
-GET /api/auth/audit/hourly-trends       # Tendencias horarias del sistema
-```
-
-### **👥 Gestión de Usuarios (Solo Super-Admin)**
-
-```bash
-GET    /api/users              # Listar todos los usuarios con roles
-GET    /api/users/:id          # Obtener usuario específico
-PATCH  /api/users/:id/role     # Actualizar rol de usuario
-GET    /api/users/roles/list   # Listar todos los roles disponibles
-```
-
----
-
-## 🛠️ Configuración Avanzada
-
-### **Variables de Entorno Adicionales**
-
-```bash
-# Configuración JWT
-JWT_SECRET=super_secret_key_for_production
-JWT_EXPIRES=2m  # 2 minutos para demos, usar valores mayores en producción
-
-# Configuración MFA (opcional)
-MFA_ISSUER=Auditoria_System
-MFA_SERVICE_NAME=Auditoria_App
-```
-
-### **Crear Usuario Super-Admin**
+Ejemplo SQL mínimo para crear las tablas usadas por el backend. Ajusta según tus necesidades.
 
 ```sql
--- Insertar usuario super-admin para pruebas
-INSERT INTO users (username, email, role_id) VALUES ('admin', 'admin@test.com', 3);
-INSERT INTO auth_credentials (user_id, method, password) 
-VALUES (1, 'BASIC', 'admin123');
+CREATE TABLE usuarios (
+  id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(150) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255),
+  tipo_autenticacion ENUM('basico','cifrado','google') DEFAULT 'basico',
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE vehiculos (
+  id_vehiculo INT AUTO_INCREMENT PRIMARY KEY,
+  marca VARCHAR(100),
+  modelo VARCHAR(100),
+  anio INT,
+  precio DECIMAL(12,2),
+  estado ENUM('Disponible','Vendido','En mantenimiento') DEFAULT 'Disponible',
+  kilometraje INT,
+  color VARCHAR(50),
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE logs_sesion (
+  id_log INT AUTO_INCREMENT PRIMARY KEY,
+  id_usuario INT,
+  metodo VARCHAR(50),
+  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  detalles TEXT,
+  FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL
+);
 ```
 
-### **Probar Anti-Brute Force**
+## API — Endpoints principales
 
-```bash
-# Script para simular múltiples intentos fallidos
-for i in {1..10}; do
-  curl -X POST http://localhost:5000/api/auth/login/basic \
-    -H "Content-Type: application/json" \
-    -d '{"username":"invalid","password":"wrong"}'
-done
+Base URL: `http://localhost:3000` (o el puerto definido en `.env`)
+
+Rutas de autenticación (`/auth`):
+
+- `POST /auth/registro` — Registrar usuario
+  - Body (JSON): `{ nombre, email, password, tipo_autenticacion }`
+
+- `POST /auth/loginBasico` — Login sin cifrado (texto plano)
+  - Body: `{ email, password }`
+
+- `POST /auth/loginSeguro` — Login con hash (bcrypt)
+  - Body: `{ email, password }`
+
+- `POST /auth/loginGoogle` — Login/registro con Google (simulado o con token enviado desde frontend)
+  - Body: `{ email, nombre }`
+
+Rutas de inventario (`/vehiculos`):
+
+- `GET /vehiculos` — Listar vehículos
+- `GET /vehiculos/:id` — Obtener vehículo por id
+- `POST /vehiculos` — Crear vehículo (body con campos de vehículo)
+- `PUT /vehiculos/:id` — Actualizar vehículo
+- `DELETE /vehiculos/:id` — Eliminar vehículo
+## Requerimientos avanzados implementados / por implementar
+
+A continuación se documentan los requisitos adicionales que has añadido al proyecto: roles y permisos, MFA, expiración corta de JWT (2 minutos), protección anti-brute-force mediante Exponential Backoff y un sistema de auditoría/logging para análisis posterior (posible uso de ML).
+
+### Roles y permisos
+
+Se definen tres roles principales con permisos diferenciados:
+
+- Visitante
+  - Acceso público de sólo lectura al catálogo de vehículos.
+
+- Administrador
+  - CRUD completo del inventario automotriz.
+  - Eliminación lógica (soft delete) de registros: los registros se marcan con `deleted_at` en lugar de eliminarse físicamente.
+
+- Super-administrador
+  - Gestión completa de usuarios (crear, editar, eliminar, cambiar roles).
+  - Acceso a dashboard de métricas de auditoría y logs.
+  - Todos los privilegios de administrador.
+
+### Inventario: soft delete
+
+Recomendación de schema para soft delete en `vehiculos`:
+
+```sql
+ALTER TABLE vehiculos ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL;
+-- En las consultas públicas filtrar WHERE deleted_at IS NULL
 ```
 
----
+### Autenticación Multi-Factor (MFA)
 
-## 📈 Dependencias Adicionales
+Requisitos y notas de diseño:
+
+- El sistema debe soportar un segundo factor (TOTP, SMS o servicio externo tipo Duo). Para evaluación recomendamos TOTP (Google Authenticator) o integración con `@duosecurity/duo_api` si se dispone de cuenta.
+- Flujo sugerido:
+  1. Usuario se autentica con credenciales (password). Si el método es `cifrado`, validar con bcrypt.
+  2. Si el usuario tiene MFA habilitado, generar y enviar un token TOTP o solicitar segundo factor.
+  3. Al completar MFA emitir un JWT con los claims definidos (ver siguiente sección).
+
+- Implementación mínima: servicio `backend/services/mfa/` con helpers para generar/validar TOTP (por ejemplo con `otplib`) y endpoints para enrolamiento y verificación.
+
+### JWT y claims
+
+Reglas y recomendaciones:
+
+- Al emitir el JWT incluir claims mínimos y útiles para auditoría y autorización:
 
 ```json
 {
-  "speakeasy": "^2.0.0",    // Generación y verificación TOTP
-  "qrcode": "^1.5.3"        // Generación de códigos QR para MFA
+  "id_usuario": 123,
+  "email": "user@ejemplo.com",
+  "rol": "admin",
+  "tipo_autenticacion": "cifrado",
+  "mfa": true,
+  "iat": 1698123456,
+  "exp": 1698123576, // expiración a 2 minutos (120s) para la evaluación
+  "jti": "uuid-v4"
 }
 ```
 
+- Tiempo de expiración (exp): 2 minutos (120 segundos) en tokens de acceso para esta evaluación.
+- Se recomienda emitir además un refresh token con mayor caducidad si se desea mantener sesiones más largas (fuera del scope de la calificación).
+
+### Protección Anti-Brute Force — Exponential Backoff
+
+Descripción general:
+
+- Implementar por IP (y opcionalmente por email/username) un contador de intentos fallidos.
+- Algoritmo básico:
+  - Mantener un registro en memoria/Redis/DB con: { ip, attempts, lastAttemptAt, nextAllowedAt }
+  - Ante un fallo incrementar `attempts` y calcular `delay = baseDelay * 2^(attempts-1)` (por ejemplo baseDelay = 1s).
+  - Establecer `nextAllowedAt = now + delay` y responder al cliente con un código 429 y el tiempo restante.
+  - Permitir reset de contador tras un login exitoso o pasada una ventana de tiempo (decay window).
+
+Ejemplo de pseudocódigo (middleware `backend/middleware/backoff.js`):
+
+```js
+const baseDelay = 1000; // 1s
+const maxDelay = 60 * 1000; // 1 min (opcional)
+
+function onFailedAttempt(ip) {
+  const record = store.get(ip) || { attempts: 0 };
+  record.attempts += 1;
+  const delay = Math.min(baseDelay * Math.pow(2, record.attempts - 1), maxDelay);
+  record.nextAllowedAt = Date.now() + delay;
+  store.set(ip, record);
+  return delay;
+}
+
+function middleware(req, res, next) {
+  const ip = req.ip;
+  const record = store.get(ip);
+  if (record && record.nextAllowedAt && Date.now() < record.nextAllowedAt) {
+    const waitMs = record.nextAllowedAt - Date.now();
+    return res.status(429).json({ message: 'Too many attempts. Try later.', retry_after_ms: waitMs });
+  }
+  next();
+}
+```
+
+Recomendaciones de implementación:
+
+- Usar Redis para acumuladores distribuidos si el sistema se escala.
+- Para pruebas locales un store en memoria o una tabla SQL temporal es suficiente.
+- Pausas y límites deben ser razonables para la evaluación (ej. cap máximo de 1–2 minutos).
+
+### Auditoría y Logging
+
+Requisitos:
+
+- Guardar logs de autenticación: intentos exitosos y fallidos, IP, user-agent, endpoint, timestamp, motivo (p.ej. contraseña incorrecta).
+- Guardar request por endpoint y metadata (method, path, body hash / size, response code, duration) para análisis posterior.
+- Mantener los datos estructurados para poder alimentar un pipeline de ML (detección de anomalías).
+
+Tablas sugeridas (añadir al esquema MySQL):
+
+```sql
+CREATE TABLE auth_attempts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_usuario INT NULL,
+  email VARCHAR(255) NULL,
+  ip VARCHAR(45) NOT NULL,
+  user_agent VARCHAR(512),
+  success BOOLEAN NOT NULL,
+  motivo VARCHAR(255),
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE request_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  path VARCHAR(255),
+  method VARCHAR(10),
+  ip VARCHAR(45),
+  user_agent VARCHAR(512),
+  body_hash VARCHAR(128) NULL,
+  response_code INT,
+  duration_ms INT,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE audit_events (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nivel ENUM('INFO','WARN','ERROR','SECURITY'),
+  componente VARCHAR(100),
+  descripcion TEXT,
+  metadata JSON,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Carpetas y archivos recomendados (backend)
+
+- `backend/middleware/`
+  - `auth.js` — validar JWT y claims
+  - `roles.js` — comprobar permisos por rol
+  - `backoff.js` — middleware de exponential backoff
+  - `auditLogger.js` — middleware para registrar cada request en `request_logs`
+
+- `backend/services/`
+  - `mfa/` — helpers para TOTP (enrolamiento, verificación)
+  - `backoff/` — store y utilidades (si se usa Redis)
+  - `audit/` — funciones para guardar `auth_attempts` y `audit_events`
+
+- `backend/routes/admin.js` — endpoints para gestión de usuarios y dashboard
+- `backend/controllers/auditController.js` — endpoints para obtener métricas y logs
+
+### Frontend — nuevos componentes / páginas sugeridas
+
+- `src/pages/Dashboard.tsx` — vista para super-administrador con gráficos (puede usar Chart.js o Recharts)
+- `src/pages/MFASetup.tsx` — flujo de enrolamiento y verificación MFA
+- `src/components/ProtectedRoute.tsx` — ruta que valida JWT y roles
+
+### Ejemplos y scripts para pruebas (brute force)
+
+Script de ejemplo (PowerShell) para probar múltiples intentos contra `/auth/loginBasico`:
+
+```powershell
+$url = 'http://localhost:3000/auth/loginBasico'
+for ($i=1; $i -le 50; $i++) {
+  $body = @{ email = 'victim@domain' ; password = 'wrong'+$i } | ConvertTo-Json
+  $r = Invoke-RestMethod -Method Post -Uri $url -Body $body -ContentType 'application/json' -ErrorAction SilentlyContinue
+  Write-Host "Attempt $i -> status: $($r | ConvertTo-Json -Compress)"
+  Start-Sleep -Milliseconds 200
+}
+```
+
+Al ejecutar el script deberías observar respuestas 429 y ver registros en `auth_attempts` y en la store del backoff indicando el retraso aplicado.
+
+### Dashboard y métricas de auditoría
+
+- Recomendación: exponer endpoints read-only para el dashboard que agreguen datos desde `request_logs` y `auth_attempts` (counts por IP, trends de intentos, top endpoints, tasa de fallos).
+- Para visualización rápida usar Chart.js, Recharts o una pequeña app React que consuma `/admin/metrics`.
+
+### Integración con Machine Learning (futuro)
+
+- Mantén los logs estructurados y normalizados: IP, hour-of-day, success-rate, user_agent_token, request_freq, etc.
+- Exportar a parquet/CSV o a ElasticSearch / ClickHouse para análisis offline y modelado.
+
+### Testing y verificación
+
+Checks recomendados:
+
+- Validar que JWT expira en 2 minutos (usar token, esperar >120s y comprobar rechazo).
+- Probar MFA enrolamiento y verificación (si implementado).
+- Ejecutar el script de brute force y verificar entradas en `auth_attempts` y respuestas 429.
+- Revisar `request_logs` para analizar patrones y latencias.
+
+### Dependencias recomendadas
+
+- `express-rate-limit` (sencillo rate limiter)
+- `rate-limiter-flexible` (más flexible, Redis support)
+- `otplib` (para TOTP)
+- `uuid` (generar jti)
+- `winston` o `pino` para logging estructurado
+- `redis` para store de backoff y contadores distribuidos
+
 ---
-
-## 🚀 Casos de Uso
-
-### **Para Visitantes**
-- Ver catálogo público de vehículos disponibles
-- Buscar y filtrar vehículos activos
-
-### **Para Administradores**  
-- Gestión completa del inventario (crear, actualizar, soft delete)
-- Acceso a vehículos inactivos
-- Configuración personal de MFA
-
-### **Para Super-Administradores**
-- Todo lo anterior +
-- Gestión de usuarios y roles
-- Dashboard completo de auditoría
-- Análisis de IPs sospechosas
-- Métricas y tendencias del sistema
-
----
-
-## 🔮 Preparación para Machine Learning
-
-El sistema genera logs detallados optimizados para futuro análisis con ML:
-- Patrones de uso por IP
-- Comportamientos anómalos de usuarios
-- Detección automática de intentos de ataque
-- Métricas temporales para análisis predictivo
 
